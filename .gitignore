@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Streamlit config / cache
+.streamlit/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and transient files (keep directory, ignore transient runs)
+logs/*.log
+logs/*.jsonl
+logs/*.json
+!logs/.gitkeep
+backups/*.tar.gz
+reports/*.md
+reports/*.json
+reports/*.csv
+!reports/.gitkeep
+
+# OS generated files
+.DS_Store
+Thumbs.db

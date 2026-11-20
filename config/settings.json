@@ -1,0 +1,40 @@
+{
+  "system": {
+    "collection_interval_seconds": 5,
+    "history_retention_points": 60,
+    "log_level": "INFO"
+  },
+  "thresholds": {
+    "cpu_warning_percent": 70.0,
+    "cpu_critical_percent": 80.0,
+    "memory_warning_percent": 75.0,
+    "memory_critical_percent": 85.0,
+    "disk_warning_percent": 75.0,
+    "disk_critical_percent": 85.0,
+    "load_warning_ratio": 1.5,
+    "load_critical_ratio": 2.5
+  },
+  "services_to_monitor": [
+    "ssh",
+    "cron",
+    "nginx",
+    "docker",
+    "systemd-journald",
+    "ufw",
+    "rsyslog"
+  ],
+  "maintenance": {
+    "log_retention_days": 7,
+    "temp_file_retention_days": 3,
+    "backup_directory": "backups"
+  },
+  "paths": {
+    "logs_dir": "logs",
+    "reports_dir": "reports",
+    "metrics_log": "logs/metrics.jsonl",
+    "alerts_log": "logs/alerts.log",
+    "incidents_file": "logs/incidents.json",
+    "app_log": "logs/serverwatch.log",
+    "maintenance_log": "logs/maintenance.log"
+  }
+}
