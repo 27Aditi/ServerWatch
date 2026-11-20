@@ -466,9 +466,10 @@ elif nav_selection == "📈 Resource Monitoring":
         partitions = disk.get("partitions", [])
         if partitions:
             p_df = pd.DataFrame(partitions)
-            p_display = p_df[["mountpoint", "device", "fstype", "utilization_percent", "used_human", "free_human", "total_human"]]
-            p_display.columns = ["Mountpoint", "Device", "FS Type", "Used (%)", "Used", "Free", "Total"]
-            st.dataframe(p_display, use_container_width=True)
+            desired_disk_cols = ["mountpoint", "device", "fstype", "utilization_percent", "used_human", "free_human", "total_human"]
+            existing_disk_cols = [c for c in desired_disk_cols if c in p_df.columns]
+            p_display = p_df[existing_disk_cols].copy()
+            st.dataframe(p_display, use_container_width=True, hide_index=True)
 
             fig_disk = px.bar(
                 p_df, x="mountpoint", y="utilization_percent",
@@ -502,7 +503,11 @@ elif nav_selection == "📈 Resource Monitoring":
         st.markdown("##### Configured Network Interfaces")
         if net.get("interfaces"):
             iface_df = pd.DataFrame(net["interfaces"])
-            st.dataframe(iface_df[["name", "status", "ipv4", "speed_mbps", "mac"]], use_container_width=True)
+            if "status" not in iface_df.columns and "is_up" in iface_df.columns:
+                iface_df["status"] = iface_df["is_up"].apply(lambda x: "UP" if x else "DOWN")
+            desired_cols = ["name", "status", "ipv4", "speed_mbps", "mac"]
+            existing_cols = [c for c in desired_cols if c in iface_df.columns]
+            st.dataframe(iface_df[existing_cols] if existing_cols else iface_df, use_container_width=True, hide_index=True)
 
 
 # ==============================================================================
@@ -525,16 +530,20 @@ elif nav_selection == "⚙️ Process Management":
     with c1:
         st.markdown("##### ⚡ Top 10 CPU Consuming Processes")
         top_cpu = process_mgr.get_top_cpu_processes(limit=10)
-        df_top_cpu = pd.DataFrame(top_cpu)[["pid", "name", "username", "cpu_percent", "memory_percent", "threads"]]
-        df_top_cpu.columns = ["PID", "Process Name", "User", "CPU %", "RAM %", "Threads"]
-        st.dataframe(df_top_cpu, use_container_width=True, hide_index=True)
+        if top_cpu:
+            df_top_cpu = pd.DataFrame(top_cpu)
+            cpu_cols = ["pid", "name", "username", "cpu_percent", "memory_percent", "threads"]
+            exist_cpu = [c for c in cpu_cols if c in df_top_cpu.columns]
+            st.dataframe(df_top_cpu[exist_cpu], use_container_width=True, hide_index=True)
 
     with c2:
         st.markdown("##### 💾 Top 10 Memory Consuming Processes")
         top_mem = process_mgr.get_top_memory_processes(limit=10)
-        df_top_mem = pd.DataFrame(top_mem)[["pid", "name", "username", "memory_percent", "memory_rss_human", "cpu_percent"]]
-        df_top_mem.columns = ["PID", "Process Name", "User", "RAM %", "RSS Mem", "CPU %"]
-        st.dataframe(df_top_mem, use_container_width=True, hide_index=True)
+        if top_mem:
+            df_top_mem = pd.DataFrame(top_mem)
+            mem_cols = ["pid", "name", "username", "memory_percent", "memory_rss_human", "cpu_percent"]
+            exist_mem = [c for c in mem_cols if c in df_top_mem.columns]
+            st.dataframe(df_top_mem[exist_mem], use_container_width=True, hide_index=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("##### 🔍 Full Process Table")
@@ -542,11 +551,15 @@ elif nav_selection == "⚙️ Process Management":
     search_query = st.text_input("Filter processes by name or user:", value="")
     all_procs = process_mgr.get_all_processes(limit=200)
     if search_query:
-        all_procs = [p for p in all_procs if search_query.lower() in p["name"].lower() or search_query.lower() in p["username"].lower()]
+        all_procs = [p for p in all_procs if search_query.lower() in p.get("name", "").lower() or search_query.lower() in p.get("username", "").lower()]
 
-    df_all = pd.DataFrame(all_procs)[["pid", "name", "username", "status", "cpu_percent", "memory_percent", "memory_rss_human", "create_time"]]
-    df_all.columns = ["PID", "Name", "User", "Status", "CPU %", "RAM %", "Memory RSS", "Started At"]
-    st.dataframe(df_all, use_container_width=True, hide_index=True)
+    if all_procs:
+        df_all = pd.DataFrame(all_procs)
+        all_cols = ["pid", "name", "username", "status", "cpu_percent", "memory_percent", "memory_rss_human", "create_time"]
+        exist_all = [c for c in all_cols if c in df_all.columns]
+        st.dataframe(df_all[exist_all], use_container_width=True, hide_index=True)
+    else:
+        st.info("No active processes matching filter.")
 
     # PROCESS TERMINATION SECTION
     with st.expander("🛡️ Process Inspection & Controlled Termination", expanded=False):
@@ -731,12 +744,13 @@ elif nav_selection == "🛡️ System Services":
     monitored_services = config_data.get("services_to_monitor", ["ssh", "cron", "nginx", "docker", "systemd-journald", "ufw", "rsyslog"])
 
     if not runtime_env["has_systemd"]:
-        st.warning(
-            "⚠️ **Linux Service Inspection (systemd) Unavailable in Container Environment**\n\n"
-            "This application is running inside a lightweight container sandbox (Streamlit Community Cloud). "
-            "Containers do not run the **systemd init system** (PID 1 is the container process, not `systemd`), "
-            "meaning `systemctl` commands cannot query daemon statuses.\n\n"
-            "**Real-world usage:** To monitor `systemd` units (`ssh`, `nginx`, `docker`, etc.), run ServerWatch on a dedicated Ubuntu/Debian Linux virtual machine or bare-metal host."
+        st.info(
+            "ℹ️ **Environment Information: Container Sandbox Runtime**\n\n"
+            "This application is hosted inside an unprivileged Linux container sandbox (Streamlit Community Cloud). "
+            "Containers do not run the **systemd init system** (PID 1 is the container entrypoint, not `systemd`), "
+            "so `systemctl` commands cannot query daemon statuses.\n\n"
+            "**Dedicated Linux Deployment:** When ServerWatch is deployed on a live Ubuntu/Debian server or VM, "
+            "this section queries `systemctl` to monitor `ssh`, `nginx`, `docker`, and other background daemons."
         )
 
         service_results = []

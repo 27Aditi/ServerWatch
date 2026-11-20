@@ -313,6 +313,7 @@ class SystemMetricsCollector:
             interfaces.append({
                 "name": name,
                 "is_up": is_up,
+                "status": "UP" if is_up else "DOWN",
                 "speed_mbps": speed,
                 "ipv4": ipv4 or "N/A",
                 "ipv6": ipv6 or "N/A",
